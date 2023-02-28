@@ -1,0 +1,139 @@
+---
+title: "Database Code Along Session"
+format: html
+editor: visual
+---
+
+## Load Packages
+```{r}
+
+if (!require(librarian)){
+  install.packages("librarian")
+  library(librarian)
+}
+
+librarian::shelf(tidyverse, RPostgres, DBI, dbplyr)
+
+```
+
+## Connect to `ribbitr` Database - `usethis::edit_r_environ()`
+```{r}
+
+ribbitr_connection <- dbConnect(drv = dbDriver("Postgres"),
+                                dbname = Sys.getenv("aws_dbname"),
+                                host = Sys.getenv("aws_host"),
+                                port = Sys.getenv("aws_port"),
+                                user = Sys.getenv("aws_user"),
+                                password = Sys.getenv("aws_password"))
+
+
+```
+
+## Set `search_path` for `survey_data` Schema
+```{r}
+
+search_path <- "set search_path = 'survey_data';"
+
+dbExecute(ribbitr_connection, search_path)
+
+```
+
+## Sample Query with `DBI` Package
+
+### `location` Table
+```{r}
+
+sql <- "SELECT * FROM location;"
+
+location <- dbGetQuery(ribbitr_connection, sql)
+
+
+```
+
+### Join `location` and `region` Tables Together
+```{r}
+
+sql_loc_reg <- "SELECT l.location, r.region
+                FROM location l
+                JOIN region r on l.location_id = r.location_id;"
+
+loc_reg <- dbGetQuery(ribbitr_connection, sql_loc_reg)
+
+```
+
+### Join to `capture` Level Data - Join tables first then select columns
+```{r}
+
+# use `*` to show difference
+cap_sql <- "SELECT l.location, r.region, s.site, v.date, v.survey_time, s2.start_time, s2.end_time, c.species_capture
+            FROM location l
+            JOIN region r on l.location_id = r.location_id
+            JOIN site s on r.region_id = s.region_id
+            JOIN visit v on s.site_id = v.site_id
+            JOIN survey s2 on v.visit_id = s2.visit_id
+            JOIN capture c on s2.survey_id = c.survey_id;"
+
+clean_data <- dbGetQuery(ribbitr_connection, cap_sql)
+
+```
+
+### Join to `capture` Level Data - Add `WHERE` Clause
+```{r}
+
+# use `*` to show difference
+penn_sql <- "SELECT l.location, r.region, s.site, v.date, v.survey_time, s2.start_time, s2.end_time, c.species_capture
+             FROM location l
+             JOIN region r on l.location_id = r.location_id
+             JOIN site s on r.region_id = s.region_id
+             JOIN visit v on s.site_id = v.site_id
+             JOIN survey s2 on v.visit_id = s2.visit_id
+             JOIN capture c on s2.survey_id = c.survey_id
+             WHERE r.region = 'pennsylvania' AND v.survey_time = 'day';"
+
+penn_data <- dbGetQuery(ribbitr_connection, penn_sql)
+```
+
+## Sample Query with `dbplyr` Package
+
+### `location` Table
+```{r}
+# Storing a database version table in memory of the `location` table
+location_table <- tbl(ribbitr_connection, "location")
+
+# retrieve data
+location_table <- tbl(ribbitr_connection, "location") %>% 
+  collect()
+
+# Display SQL query
+tbl(ribbitr_connection, "location") %>%
+  show_query()
+
+```
+
+### Join `location` and `region` Table
+```{r}
+loc_reg <- tbl(ribbitr_connection, "location") %>%
+  left_join(tbl(ribbitr_connection, "region"), by = c("location_id")) %>%
+  select(c(location, region)) %>%
+  collect()
+
+```
+
+### Join to `capture` Level Data
+```{r}
+
+db_data <- tbl(ribbitr_connection, "location") %>%
+  left_join(tbl(ribbitr_connection, "region"), by = c("location_id")) %>%
+  left_join(tbl(ribbitr_connection, "site"), by = c("region_id")) %>%
+  left_join(tbl(ribbitr_connection, "visit"), by = c("site_id")) %>%
+  left_join(tbl(ribbitr_connection, "survey"), by = c("visit_id")) %>%
+  left_join(tbl(ribbitr_connection, "capture"), by = c("survey_id")) %>%
+  select(c(location, region, site, date, start_time, end_time, survey_time, duration_minutes,
+           species_capture, body_mass_g, svl_mm, life_stage, sex)) %>% 
+  filter(region == "pennsylvania", survey_time == "day") %>% 
+  collect()
+
+
+```
+
+
