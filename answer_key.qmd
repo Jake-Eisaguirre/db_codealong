@@ -5,18 +5,21 @@ editor: visual
 ---
 
 ## Load Packages
+
 ```{r}
+#| echo: false
 
 if (!require(librarian)){
   install.packages("librarian")
   library(librarian)
 }
 
-librarian::shelf(tidyverse, RPostgres, DBI, dbplyr)
+shelf(tidyverse, RPostgres, DBI, dbplyr)
 
 ```
 
 ## Connect to `ribbitr` Database - `usethis::edit_r_environ()`
+
 ```{r}
 
 ribbitr_connection <- dbConnect(drv = dbDriver("Postgres"),
@@ -30,6 +33,7 @@ ribbitr_connection <- dbConnect(drv = dbDriver("Postgres"),
 ```
 
 ## Set `search_path` for `survey_data` Schema
+
 ```{r}
 
 search_path <- "set search_path = 'survey_data';"
@@ -41,6 +45,7 @@ dbExecute(ribbitr_connection, search_path)
 ## Sample Query with `DBI` Package
 
 ### `location` Table
+
 ```{r}
 
 sql <- "SELECT * FROM location;"
@@ -51,6 +56,7 @@ location <- dbGetQuery(ribbitr_connection, sql)
 ```
 
 ### Join `location` and `region` Tables Together
+
 ```{r}
 
 sql_loc_reg <- "SELECT l.location, r.region
@@ -62,6 +68,7 @@ loc_reg <- dbGetQuery(ribbitr_connection, sql_loc_reg)
 ```
 
 ### Join to `capture` Level Data - Join tables first then select columns
+
 ```{r}
 
 # use `*` to show difference
@@ -78,6 +85,7 @@ clean_data <- dbGetQuery(ribbitr_connection, cap_sql)
 ```
 
 ### Join to `capture` Level Data - Add `WHERE` Clause
+
 ```{r}
 
 # use `*` to show difference
@@ -96,6 +104,7 @@ penn_data <- dbGetQuery(ribbitr_connection, penn_sql)
 ## Sample Query with `dbplyr` Package
 
 ### `location` Table
+
 ```{r}
 # Storing a database version table in memory of the `location` table
 location_table <- tbl(ribbitr_connection, "location")
@@ -111,6 +120,7 @@ tbl(ribbitr_connection, "location") %>%
 ```
 
 ### Join `location` and `region` Table
+
 ```{r}
 loc_reg <- tbl(ribbitr_connection, "location") %>%
   left_join(tbl(ribbitr_connection, "region"), by = c("location_id")) %>%
@@ -120,6 +130,7 @@ loc_reg <- tbl(ribbitr_connection, "location") %>%
 ```
 
 ### Join to `capture` Level Data
+
 ```{r}
 
 db_data <- tbl(ribbitr_connection, "location") %>%
@@ -135,5 +146,3 @@ db_data <- tbl(ribbitr_connection, "location") %>%
 
 
 ```
-
-
