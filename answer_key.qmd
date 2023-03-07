@@ -123,7 +123,7 @@ tbl(ribbitr_connection, "location") %>%
 
 ```{r}
 loc_reg <- tbl(ribbitr_connection, "location") %>%
-  left_join(tbl(ribbitr_connection, "region"), by = c("location_id")) %>%
+  inner_join(tbl(ribbitr_connection, "region"), by = c("location_id")) %>%
   select(c(location, region)) %>%
   collect()
 
@@ -134,14 +134,14 @@ loc_reg <- tbl(ribbitr_connection, "location") %>%
 ```{r}
 
 db_data <- tbl(ribbitr_connection, "location") %>%
-  left_join(tbl(ribbitr_connection, "region"), by = c("location_id")) %>%
-  left_join(tbl(ribbitr_connection, "site"), by = c("region_id")) %>%
-  left_join(tbl(ribbitr_connection, "visit"), by = c("site_id")) %>%
-  left_join(tbl(ribbitr_connection, "survey"), by = c("visit_id")) %>%
-  left_join(tbl(ribbitr_connection, "capture"), by = c("survey_id")) %>%
+  inner_join(tbl(ribbitr_connection, "region"), by = c("location_id")) %>%
+  inner_join(tbl(ribbitr_connection, "site"), by = c("region_id")) %>%
+  inner_join(tbl(ribbitr_connection, "visit"), by = c("site_id")) %>%
+  inner_join(tbl(ribbitr_connection, "survey"), by = c("visit_id")) %>%
+  inner_join(tbl(ribbitr_connection, "capture"), by = c("survey_id")) %>%
   select(c(location, region, site, date, start_time, end_time, survey_time, duration_minutes,
            species_capture, body_mass_g, svl_mm, life_stage, sex)) %>% 
-  filter(region == "pennsylvania", survey_time == "day") %>% 
+  #filter(region == "pennsylvania", survey_time == "day") %>% 
   collect()
 
 
