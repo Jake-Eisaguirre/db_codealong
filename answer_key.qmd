@@ -2,6 +2,8 @@
 title: "Database Code Along Session"
 format: html
 editor: visual
+editor_options: 
+  chunk_output_type: inline
 ---
 
 ## Load Packages
@@ -14,9 +16,10 @@ if (!require(librarian)){
   library(librarian)
 }
 
-shelf(tidyverse, RPostgres, DBI, dbplyr)
+shelf(tidyverse, RPostgres, DBI, dbplyr, dm, usethis)
 
 ```
+
 
 ## Connect to `ribbitr` Database - `usethis::edit_r_environ()`
 
@@ -32,6 +35,26 @@ ribbitr_connection <- dbConnect(drv = dbDriver("Postgres"),
 
 ```
 
+
+## List All Schemas in `ribbitr` database
+
+```{r}
+
+dbGetQuery(ribbitr_connection, "SELECT nspname FROM pg_catalog.pg_namespace")
+
+```
+
+
+## View `survey_data` Schema - `dm` package
+
+```{r}
+
+dm_from_con(ribbitr_connection, schema = 'survey_data') %>% 
+  dm_draw(rankdir = "RL", view_type = "all")
+
+```
+
+
 ## Set `search_path` for `survey_data` Schema
 
 ```{r}
@@ -41,6 +64,7 @@ search_path <- "set search_path = 'survey_data';"
 dbExecute(ribbitr_connection, search_path)
 
 ```
+
 
 ## Sample Query with `DBI` Package
 
@@ -55,6 +79,7 @@ location <- dbGetQuery(ribbitr_connection, sql)
 
 ```
 
+
 ### Join `location` and `region` Tables Together
 
 ```{r}
@@ -66,6 +91,7 @@ sql_loc_reg <- "SELECT l.location, r.region
 loc_reg <- dbGetQuery(ribbitr_connection, sql_loc_reg)
 
 ```
+
 
 ### Join to `capture` Level Data - Join tables first then select columns
 
@@ -83,6 +109,7 @@ cap_sql <- "SELECT l.location, r.region, s.site, v.date, v.survey_time, s2.start
 clean_data <- dbGetQuery(ribbitr_connection, cap_sql)
 
 ```
+
 
 ### Join to `capture` Level Data - Add `WHERE` Clause
 
