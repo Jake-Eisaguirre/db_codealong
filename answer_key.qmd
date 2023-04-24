@@ -64,6 +64,15 @@ dbExecute(ribbitr_connection, search_path)
 
 ```
 
+## View Tables and Fields - `DBI` Package
+```{r}
+#| output: false
+dbListTables(ribbitr_connection)
+
+dbListFields(ribbitr_connection, "capture")
+```
+
+
 ## Sample Query with `DBI` Package
 
 ### `location` Table
