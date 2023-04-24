@@ -1,15 +1,16 @@
 ---
 title: "Database Code Along Session"
+author: "Jake Eisaguirre"
+date: 2022-02-03
 format: html
-editor: visual
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ## Load Packages
 
 ```{r}
-#| echo: false
+#| output: false
 
 if (!require(librarian)){
   install.packages("librarian")
@@ -20,11 +21,10 @@ shelf(tidyverse, RPostgres, DBI, dbplyr, dm, usethis)
 
 ```
 
-
 ## Connect to `ribbitr` Database - `usethis::edit_r_environ()`
 
 ```{r}
-
+#| output: false
 ribbitr_connection <- dbConnect(drv = dbDriver("Postgres"),
                                 dbname = Sys.getenv("aws_dbname"),
                                 host = Sys.getenv("aws_host"),
@@ -35,43 +35,41 @@ ribbitr_connection <- dbConnect(drv = dbDriver("Postgres"),
 
 ```
 
-
 ## List All Schemas in `ribbitr` database
 
 ```{r}
-
+#| output: false
 dbGetQuery(ribbitr_connection, "SELECT nspname FROM pg_catalog.pg_namespace")
 
 ```
 
-
 ## View `survey_data` Schema - `dm` package
 
-```{r}
+### `gear icon` select `chunk output in console`
 
+```{r}
+#| output: false
 dm_from_con(ribbitr_connection, schema = 'survey_data') %>% 
   dm_draw(rankdir = "RL", view_type = "all")
 
 ```
 
-
 ## Set `search_path` for `survey_data` Schema
 
 ```{r}
-
+#| output: false
 search_path <- "set search_path = 'survey_data';"
 
 dbExecute(ribbitr_connection, search_path)
 
 ```
 
-
 ## Sample Query with `DBI` Package
 
 ### `location` Table
 
 ```{r}
-
+#| output: false
 sql <- "SELECT * FROM location;"
 
 location <- dbGetQuery(ribbitr_connection, sql)
@@ -79,11 +77,10 @@ location <- dbGetQuery(ribbitr_connection, sql)
 
 ```
 
-
 ### Join `location` and `region` Tables Together
 
 ```{r}
-
+#| output: false
 sql_loc_reg <- "SELECT l.location, r.region
                 FROM location l
                 JOIN region r on l.location_id = r.location_id;"
@@ -92,13 +89,14 @@ loc_reg <- dbGetQuery(ribbitr_connection, sql_loc_reg)
 
 ```
 
-
 ### Join to `capture` Level Data - Join tables first then select columns
 
 ```{r}
+#| output: false
 
 # use `*` to show difference
-cap_sql <- "SELECT l.location, r.region, s.site, v.date, v.survey_time, s2.start_time, s2.end_time, c.species_capture
+cap_sql <- "SELECT l.location, r.region, s.site, v.date, v.survey_time, 
+            s2.start_time, s2.end_time, c.species_capture
             FROM location l
             JOIN region r on l.location_id = r.location_id
             JOIN site s on r.region_id = s.region_id
@@ -110,22 +108,23 @@ clean_data <- dbGetQuery(ribbitr_connection, cap_sql)
 
 ```
 
-
 ### Join to `capture` Level Data - Add `WHERE` Clause
 
 ```{r}
-
+#| output: false
 # use `*` to show difference
-penn_sql <- "SELECT l.location, r.region, s.site, v.date, v.survey_time, s2.start_time, s2.end_time, c.species_capture
-             FROM location l
-             JOIN region r on l.location_id = r.location_id
-             JOIN site s on r.region_id = s.region_id
-             JOIN visit v on s.site_id = v.site_id
-             JOIN survey s2 on v.visit_id = s2.visit_id
-             JOIN capture c on s2.survey_id = c.survey_id
-             WHERE r.region = 'pennsylvania' AND v.survey_time = 'day';"
+penn_ca_sql <- "SELECT l.location, r.region, s.site, v.date, v.survey_time, 
+                s2.start_time, s2.end_time, c.species_capture
+                FROM location l
+                JOIN region r on l.location_id = r.location_id
+                JOIN site s on r.region_id = s.region_id
+                JOIN visit v on s.site_id = v.site_id
+                JOIN survey s2 on v.visit_id = s2.visit_id
+                JOIN capture c on s2.survey_id = c.survey_id
+                WHERE r.region in ('pennsylvania', 'california') 
+                AND v.survey_time = 'day';"
 
-penn_data <- dbGetQuery(ribbitr_connection, penn_sql)
+penn_data <- dbGetQuery(ribbitr_connection, penn_ca_sql)
 ```
 
 ## Sample Query with `dbplyr` Package
@@ -133,6 +132,7 @@ penn_data <- dbGetQuery(ribbitr_connection, penn_sql)
 ### `location` Table
 
 ```{r}
+#| output: false
 # Storing a database version table in memory of the `location` table
 location_table <- tbl(ribbitr_connection, "location")
 
@@ -149,6 +149,7 @@ tbl(ribbitr_connection, "location") %>%
 ### Join `location` and `region` Table
 
 ```{r}
+#| output: false
 loc_reg <- tbl(ribbitr_connection, "location") %>%
   inner_join(tbl(ribbitr_connection, "region"), by = c("location_id")) %>%
   select(c(location, region)) %>%
@@ -159,16 +160,16 @@ loc_reg <- tbl(ribbitr_connection, "location") %>%
 ### Join to `capture` Level Data
 
 ```{r}
-
+#| output: false
 db_data <- tbl(ribbitr_connection, "location") %>%
   inner_join(tbl(ribbitr_connection, "region"), by = c("location_id")) %>%
   inner_join(tbl(ribbitr_connection, "site"), by = c("region_id")) %>%
   inner_join(tbl(ribbitr_connection, "visit"), by = c("site_id")) %>%
   inner_join(tbl(ribbitr_connection, "survey"), by = c("visit_id")) %>%
   inner_join(tbl(ribbitr_connection, "capture"), by = c("survey_id")) %>%
-  select(c(location, region, site, date, start_time, end_time, survey_time, duration_minutes,
-           species_capture, body_mass_g, svl_mm, life_stage, sex)) %>% 
-  #filter(region == "pennsylvania", survey_time == "day") %>% 
+  select(c(location, region, site, date, start_time, end_time, survey_time, 
+           duration_minutes, species_capture, body_mass_g, svl_mm, life_stage, sex)) %>% 
+  filter(region %in% c("pennsylvania", "california"), survey_time == "day") %>% 
   collect()
 
 
